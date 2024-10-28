@@ -29,7 +29,7 @@ st.header("2. Personalized Tips for Reducing Water Use")
 def get_personalized_tips(activity):
     prompt = f"Provide water-saving tips for someone who uses a lot of water in their {activity}."
     response = openai.Completion.create(
-        engine="text-davinci-003",
+        engine="gpt-4",
         prompt=prompt,
         max_tokens=100
     )
