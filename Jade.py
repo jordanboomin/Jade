@@ -5,7 +5,7 @@ import numpy as np
 import time
 
 # Set up OpenAI API key
-openai.api_key = "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"
+openai.api_key = "my-api-key"
 
 # Title and introduction
 st.title("AI Assistant for Water Conservation")
