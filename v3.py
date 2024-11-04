@@ -1,11 +1,11 @@
 import streamlit as st
-from openai import OpenAI
+import openai
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
+import os
 
 # Set up OpenAI API key
-client = OpenAI(api_key="my-api")
+openai.api_key = os.getenv("my-api-key")  # Replace with direct key for testing if needed
 
 # Title and introduction
 st.title("AI Assistant for Water Conservation")
@@ -16,93 +16,65 @@ st.header("1. Real-Time Water Usage Feedback")
 st.write("Simulated real-time water usage data for key areas in Bob's home.")
 
 # Generate simulated water usage data
-usage_data = {
-    "Area": ["Shower", "Garden", "Car Wash"],
-    "Current Usage (L)": [np.random.randint(5, 20), np.random.randint(10, 30), np.random.randint(5, 15)]
-}
-usage_df = pd.DataFrame(usage_data)
-st.table(usage_df)
+def get_water_usage_data(fixture):
+    prompt = f"Generate a table displaying realistic water usage from one of the three {fixture} in a single-person household, based on the daily average water usage of 65 gallons in Santa Clara, California."
+    response = openai.Completion.create(
+        model="gpt-3.5",
+        prompt=prompt,
+        max_tokens=200
+    )
+    return response.choices[0].text.strip()
 
-# Added feature: Trend visualization with synthetic data
-st.subheader("Water Usage Trends")
-dates = pd.date_range(start="2024-01-01", periods=30)
-synthetic_data = np.random.randint(50, 150, size=(30,))
-trend_df = pd.DataFrame({"Date": dates, "Daily Usage (L)": synthetic_data})
-
-# Plot using matplotlib
-fig, ax = plt.subplots()
-ax.plot(trend_df["Date"], trend_df["Daily Usage (L)"], color='blue', marker='o', linestyle='-')
-ax.set_title("Synthetic Daily Water Usage Over 30 Days")
-ax.set_xlabel("Date")
-ax.set_ylabel("Water Usage (L)")
-ax.grid(True)
-st.pyplot(fig)
-
-st.write("This chart shows a simulated trend of daily water usage. Try to spot patterns and adjust habits accordingly!")
+# Select a fixture to find average water usage and display data
+fixture = st.selectbox("Select a fixture to find the average water usage:", ["Shower", "Garden", "Car Wash"])
+if st.button("Get Data"):
+    data = get_water_usage_data(fixture)
+    st.write(data)
 
 # Feature 2: Personalized Tips and Recommendations
 st.header("2. Personalized Tips for Reducing Water Use")
 
-# Enhanced prompt for OpenAI to improve response quality
-def get_personalized_tips(activity, current_usage, model="gpt-4"):
-    prompt = (
-        f"As an AI focused on water conservation, provide detailed and actionable water-saving tips "
-        f"for someone who uses a lot of water in their {activity}. Their current usage is {current_usage} liters. "
-        f"Suggest ways to reduce this by at least 20%."
-    )
-    completion = client.chat.completions.create(
-        model=model,
-        messages=[
-            {"role": "system", "content": "You are a helpful assistant focused on water conservation and sustainability."},
-            {"role": "user", "content": prompt}
-        ]
-    )
-    return completion.choices[0].message.content
-
+# Get water-saving tips based on activity
+def get_personalized_tips(activity):
+    tips = {
+        "Shower": "To save water when showering, consider using a low-flow showerhead and aiming to make your showers shorter!",
+        "Garden": "Water your garden in the early morning to reduce evaporation and consider installing drip irrigation!",
+        "Car Wash": "Use a bucket with soapy water and a sponge instead of a hose or attachment; it uses much less water!"
+    }
+    return tips.get(activity, "Select an activity to receive tips!")
+    
 activity = st.selectbox("Select an activity to get tips:", ["Shower", "Garden", "Car Wash"])
 if st.button("Get Tips"):
-    current_activity_usage = usage_df.loc[usage_df['Area'] == activity, 'Current Usage (L)'].values[0]
-    tips = get_personalized_tips(activity, current_activity_usage)
+    tips = get_personalized_tips(activity)
     st.write(tips)
 
-# Feature 3: Goal Setting, Progress Tracking, and Cost Savings Estimation
+# Feature 3: Goal Setting, Progress Tracking, and Estimated Savings
 st.header("3. Goal Setting, Progress Tracking, and Estimated Savings")
 
-# Set a goal for daily water usage reduction
+# Set up daily water usage goal and cost calculation
+cost_per_liter = 0.002  # Estimated cost per liter in dollars
 daily_goal = st.slider("Set your daily water usage reduction goal (liters):", 0, 50, 10)
-st.write(f"Your goal is to reduce daily water usage by {daily_goal} liters.")
+savings_goal_dollars = daily_goal * cost_per_liter
+st.write(f"Goal: Save ${savings_goal_dollars:.2f} per day by reducing water usage.")
 
-# Simulate daily usage and cost savings calculation
-current_usage = np.random.randint(80, 120)  # Simulated current daily usage
-remaining = max(current_usage - daily_goal, 0)
+# Simulate daily usage and calculate actual savings
+current_usage = np.random.randint(80, 120)  # Simulated current daily usage in liters
+actual_savings = min(daily_goal, current_usage) * cost_per_liter
+
 st.write(f"Today's Usage: {current_usage} liters")
-st.write(f"Remaining after goal: {remaining} liters")
+st.write(f"Actual Savings Today: ${actual_savings:.2f}")
+st.progress(actual_savings / savings_goal_dollars if savings_goal_dollars > 0 else 0)
 
-# Assume a cost per liter (e.g., $0.001 per liter)
-cost_per_liter = 0.001
-daily_savings = daily_goal * cost_per_liter
-monthly_savings = daily_savings * 30  # Projected over a month
-
-st.write(f"Daily Estimated Savings: ${daily_savings:.2f}")
-st.write(f"Projected Monthly Savings if goal is met daily: ${monthly_savings:.2f}")
-
-# AI-generated insight about the impact of savings
-def get_savings_insight(daily_savings, monthly_savings):
-    prompt = (
-        f"Given a daily savings of ${daily_savings:.2f} and a monthly savings of ${monthly_savings:.2f}, "
-        f"generate a motivational message to encourage the user to continue their water-saving efforts."
+# Generate an AI-based water-saving tip specific to the user's daily goal
+def get_savings_insight(daily_goal):
+    prompt = f"Provide a tip to help save {daily_goal} liters of water each day."
+    response = openai.Completion.create(
+        model="gpt-3.5-turbo",
+        prompt=prompt,
+        max_tokens=100
     )
-    completion = client.chat.completions.create(
-        model="gpt-4",
-        messages=[
-            {"role": "system", "content": "You are a motivational assistant focused on sustainability."},
-            {"role": "user", "content": prompt}
-        ]
-    )
-    return completion.choices[0].message.content
+    return response.choices[0].text.strip()
 
 if st.button("Get Savings Insight"):
-    insight = get_savings_insight(daily_savings, monthly_savings)
-    st.write(insight)
-
-st.write("Keep up the good work! Every liter saved not only helps the planet but also reduces your bills.")
+    tips = get_savings_insight(daily_goal)
+    st.write("Water-Saving Tip: ", tips)
