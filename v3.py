@@ -19,11 +19,11 @@ st.write("Simulated real-time water usage data for key areas in Bob's home.")
 def get_water_usage_data(fixture):
     prompt = f"Generate a table displaying realistic water usage from one of the three {fixture} in a single-person household, based on the daily average water usage of 65 gallons in Santa Clara, California."
     response = openai.Completion.create(
-        model="gpt-3.5",
-        prompt=prompt,
+        model="gpt-3.5-turbo",
+        messages=[{"role": "user", "content": prompt}],
         max_tokens=200
     )
-    return response.choices[0].text.strip()
+    return response.choices[0].message['content'].strip()
 
 # Select a fixture to find average water usage and display data
 fixture = st.selectbox("Select a fixture to find the average water usage:", ["Shower", "Garden", "Car Wash"])
@@ -70,10 +70,10 @@ def get_savings_insight(daily_goal):
     prompt = f"Provide a tip to help save {daily_goal} liters of water each day."
     response = openai.Completion.create(
         model="gpt-3.5-turbo",
-        prompt=prompt,
+        messages=[{"role": "user", "content": prompt}],
         max_tokens=100
     )
-    return response.choices[0].text.strip()
+    return response.choices[0].message['content'].strip()
 
 if st.button("Get Savings Insight"):
     tips = get_savings_insight(daily_goal)
