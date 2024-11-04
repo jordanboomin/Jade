@@ -2,13 +2,15 @@ import streamlit as st
 from openai import OpenAI
 import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
 
 # Set up OpenAI API key
-client = OpenAI(api_key = "MY-API")
+client = OpenAI(api_key="my-api")
 
 # Title and introduction
 st.title("AI Assistant for Water Conservation")
-st.write("This assistant provides real-time feedback, tips, and analytics to help you conserve water and save money.")
+st.write("This assistant provides real-time feedback, tips, analytics, and cost-saving insights to help you conserve water at home.")
+
 # Feature 1: Real-Time Water Usage Feedback
 st.header("1. Real-Time Water Usage Feedback")
 st.write("Simulated real-time water usage data for key areas in Bob's home.")
@@ -21,10 +23,27 @@ usage_data = {
 usage_df = pd.DataFrame(usage_data)
 st.table(usage_df)
 
+# Added feature: Trend visualization with synthetic data
+st.subheader("Water Usage Trends")
+dates = pd.date_range(start="2024-01-01", periods=30)
+synthetic_data = np.random.randint(50, 150, size=(30,))
+trend_df = pd.DataFrame({"Date": dates, "Daily Usage (L)": synthetic_data})
+
+# Plot using matplotlib
+fig, ax = plt.subplots()
+ax.plot(trend_df["Date"], trend_df["Daily Usage (L)"], color='blue', marker='o', linestyle='-')
+ax.set_title("Synthetic Daily Water Usage Over 30 Days")
+ax.set_xlabel("Date")
+ax.set_ylabel("Water Usage (L)")
+ax.grid(True)
+st.pyplot(fig)
+
+st.write("This chart shows a simulated trend of daily water usage. Try to spot patterns and adjust habits accordingly!")
+
 # Feature 2: Personalized Tips and Recommendations
 st.header("2. Personalized Tips for Reducing Water Use")
 
-# Prompt OpenAI for personalized water-saving tips
+# Enhanced prompt for OpenAI to improve response quality
 def get_personalized_tips(activity, current_usage, model="gpt-4"):
     prompt = (
         f"As an AI focused on water conservation, provide detailed and actionable water-saving tips "
