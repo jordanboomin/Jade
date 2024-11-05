@@ -68,7 +68,7 @@ st.progress(actual_savings / savings_goal_dollars if savings_goal_dollars > 0 el
 # Generate an AI-based water-saving tip specific to the user's daily goal
 def get_savings_insight(daily_goal):
     prompt = f"Provide a tip to help save {daily_goal} liters of water each day."
-    response = openai.Completion.create(
+    response = openai.ChatCompletion.create(
         model="gpt-3.5-turbo",
         messages=[{"role": "user", "content": prompt}],
         max_tokens=100
