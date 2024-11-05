@@ -5,7 +5,7 @@ import numpy as np
 import os
 
 # Set up OpenAI API key
-openai.api_key = os.getenv("my-api-key")  # Replace with direct key for testing if needed
+openai.api_key = ("my-api-key")  # Replace with direct key for testing if needed
 
 # Title and introduction
 st.title("AI Assistant for Water Conservation")
@@ -18,7 +18,7 @@ st.write("Simulated real-time water usage data for key areas in Bob's home.")
 # Generate simulated water usage data
 def get_water_usage_data(fixture):
     prompt = f"Generate a table displaying realistic water usage from one of the three {fixture} in a single-person household, based on the daily average water usage of 65 gallons in Santa Clara, California."
-    response = openai.Completion.create(
+    response = openai.ChatCompletion.create(
         model="gpt-3.5-turbo",
         messages=[{"role": "user", "content": prompt}],
         max_tokens=200
