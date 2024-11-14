@@ -1,0 +1,112 @@
+import streamlit as st
+import pandas as pd
+import numpy as np
+import random
+import openai
+
+# Set up OpenAI API key
+openai.api_key = "my-api"
+# Load or generate synthetic data
+@st.cache_data
+def generate_synthetic_data():
+    num_households = 100
+    np.random.seed(42)
+
+    # Generate household data
+    household_ids = range(1, num_households + 1)
+    household_sizes = np.random.normal(loc=2.6, scale=0.5, size=num_households).round().astype(int)
+    household_sizes = np.clip(household_sizes, 1, None)
+
+    # Generate daily water usage
+    daily_usage_per_person = np.random.normal(loc=90, scale=10, size=num_households).round().astype(int)
+    total_daily_usage = household_sizes * daily_usage_per_person
+
+    # Add Zip Codes
+    zip_codes = np.random.choice(["90001", "90002", "90003", "90004"], size=num_households)
+    
+    # Create DataFrame
+    data = {
+        'Household_ID': household_ids,
+        'Zip_Code': zip_codes,
+        'Household_Size': household_sizes,
+        'Daily_Usage_Per_Person_Gallons': daily_usage_per_person,
+        'Total_Daily_Usage_Gallons': total_daily_usage,
+    }
+    return pd.DataFrame(data)
+
+data = generate_synthetic_data()
+
+# Real average water usage
+average_data = {
+    "Region": ["California", "National Average"],
+    "Daily Usage (Gallons)": [146, 82]
+}
+
+average_usage_df = pd.DataFrame(average_data)
+
+# Tabs for navigation
+tabs = st.tabs(["Overview", "Comparison", "Personalized Feedback", "Savings Calculator"])
+
+# Tab 1: Overview
+with tabs[0]:
+    st.title("AI Assistant for Water Conservation")
+    st.write("Explore your water usage and how you can conserve water effectively.")
+
+    st.header("Household Water Usage Dataset")
+    st.write("This synthetic dataset provides insights into household water usage by zip code.")
+    st.dataframe(data)
+
+# Tab 2: Comparison
+with tabs[1]:
+    st.header("Water Usage Comparison")
+    st.write("Compare average daily water usage between Californians and the national average.")
+
+    st.bar_chart(average_usage_df.set_index("Region"))
+
+    st.write("""
+    Californians use significantly more water daily than the average American. 
+    Let's identify opportunities to reduce this usage.
+    """)
+
+# Tab 3: Personalized Feedback
+with tabs[2]:
+    st.header("Personalized Water-Saving Feedback")
+
+    is_californian = st.radio("Are you located in California?", ["Yes", "No"])
+
+    if is_californian == "Yes":
+        st.write("""
+        Californians use an average of 146 gallons per day, compared to the national average of 82 gallons. 
+        Outdoor water usage often contributes to higher consumption levels in California. 
+        Focus on strategies like using drought-resistant plants or drip irrigation.
+        """)
+    else:
+        st.write("""
+        The national average daily water usage is 82 gallons per person. 
+        While lower than California's average, there are still opportunities to conserve water through efficient indoor water use.
+        """)
+
+# Tab 4: Savings Calculator
+with tabs[3]:
+    st.header("Savings Calculator")
+    st.write("Estimate your potential water savings.")
+
+    user_usage = st.number_input("Enter your average daily water usage (gallons):", min_value=0, value=100)
+
+    if is_californian == "Yes":
+        target_usage = 82  # National average
+        region = "California"
+    else:
+        target_usage = 82
+        region = "the U.S."
+
+    savings = max(0, user_usage - target_usage)
+    st.write(f"If you reduce your usage to the {region}'s average ({target_usage} gallons/day), you could save {savings} gallons per day.")
+    st.write(f"Potential cost savings: ${savings * 0.01065:.2f} per day.")  # Assuming $0.01065 per gallon
+
+# Additional Visuals: Statewide Impact
+california_population = 39538223  # Approx. population of California
+potential_savings_statewide = (146 - 82) * california_population
+
+st.sidebar.title("Did You Know?")
+st.sidebar.write(f"If all Californians reduced their water usage to the national average, they could save approximately **{potential_savings_statewide:,} gallons of water per day**!")
