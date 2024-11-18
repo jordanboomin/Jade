@@ -7,7 +7,7 @@ import os
 import altair as alt
 
 # Set up OpenAI API key
-openai.api_key = "OPENAI-API-KEY"  # Replace with your actual API key
+openai.api_key = os.getenv("OPENAI_API_KEY")  # Replace with your actual API key
 
 # Load or generate synthetic data
 @st.cache_data

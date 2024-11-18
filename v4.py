@@ -5,7 +5,9 @@ import random
 import openai
 
 # Set up OpenAI API key
-openai.api_key = "my-api-key"  # Replace with your actual API key
+import os
+
+openai.api_key = os.getenv("OPENAI_API_KEY") # Replace with your actual API key
 
 # Load or generate synthetic data
 @st.cache_data
