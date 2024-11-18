@@ -3,12 +3,9 @@ import pandas as pd
 import numpy as np
 import random
 import openai
-import os
-
 
 # Set up OpenAI API key
-openai.api_key = "sk-_kjKSyzaCZOg0dwjkinN8Og_9inluFKDBqHitqZsXOT3BlbkFJWDiUwA3ScRvouY7jiP0CDNJtcRIEgL-jX7cPBQ1JAA"  # Replace with your actual API key
-
+openai.api_key = "my-api-key"  # Replace with your actual API key
 
 # Load or generate synthetic data
 @st.cache_data
@@ -25,22 +22,43 @@ def generate_synthetic_data():
     daily_usage_per_person = np.random.normal(loc=90, scale=10, size=num_households).round().astype(int)
     total_daily_usage = household_sizes * daily_usage_per_person
 
-    # Add Zip Codes
-    zip_codes = np.random.choice(["90001", "90002", "90003", "90004"], size=num_households)
-    
+    # Generate shower water usage
+    shower_usage_per_person = np.random.normal(loc=17.2, scale=2, size=num_households).round(1)
+    total_shower_usage = household_sizes * shower_usage_per_person
+
+    # Generate laundry water usage
+    laundry_usage = np.random.normal(loc=30, scale=5, size=num_households).round(1)  # Gallons per load
+    avg_weekly_laundry = np.random.randint(3, 7, size=num_households)  # Loads per week
+    total_laundry_usage = (laundry_usage * avg_weekly_laundry / 7).round(1)  # Daily average
+
+    # Generate dishwashing water usage
+    dishwashing_usage = np.random.normal(loc=6, scale=1, size=num_households).round(1)  # Gallons per load
+    avg_daily_dishwashing = np.random.randint(1, 3, size=num_households)  # Loads per day
+    total_dishwashing_usage = (dishwashing_usage * avg_daily_dishwashing).round(1)
+
+    # Generate car wash water usage
+    car_wash_usage_per_wash = np.random.uniform(40, 70, size=num_households)  # Gallons per wash
+    car_washes_per_month = np.random.randint(1, 5, size=num_households)  # 1-4 washes per month
+    total_car_wash_usage_monthly = car_wash_usage_per_wash * car_washes_per_month  # Total gallons per month
+    avg_daily_car_wash_usage = (total_car_wash_usage_monthly / 30).round(1)  # Convert to daily average
+
     # Create DataFrame
     data = {
         'Household_ID': household_ids,
-        'Zip_Code': zip_codes,
         'Household_Size': household_sizes,
         'Daily_Usage_Per_Person_Gallons': daily_usage_per_person,
         'Total_Daily_Usage_Gallons': total_daily_usage,
+        'Shower_Usage_Per_Person_Gallons': shower_usage_per_person,
+        'Total_Shower_Usage_Gallons': total_shower_usage,
+        'Laundry_Usage_Gallons': total_laundry_usage,
+        'Dishwashing_Usage_Gallons': total_dishwashing_usage,
+        'Car_Wash_Usage_Daily_Avg_Gallons': avg_daily_car_wash_usage  # New column for car wash
     }
     return pd.DataFrame(data)
 
 data = generate_synthetic_data()
 
-# Recommendations
+# Pool of predefined recommendations
 recommendations = {
     "Shower": [
         "Install WaterSense-certified showerheads to reduce water usage without compromising performance.",
@@ -69,19 +87,55 @@ recommendations = {
     ]
 }
 
-# Real average water usage
-average_data = {
-    "Region": ["California", "National Average"],
-    "Daily Usage (Gallons)": [146, 82]
-}
-average_usage_df = pd.DataFrame(average_data)
+# OpenAI API function for dynamic tips
+def get_openai_tip(activity, avg_usage):
+    prompt = f"Provide a water-saving tip for {activity} based on an average daily water usage of {avg_usage:.2f} gallons."
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=100
+        )
+        return response.choices[0].message['content'].strip()
+    except Exception as e:
+        return f"Error fetching OpenAI tip: {e}"
+
+# Add custom CSS styling
+st.markdown(
+    """
+    <style>
+    h1 {
+        color: #2196F3; /* Blue */
+    }
+    h2 {
+        color: #4CAF50; /* Green */
+    }
+    .stButton>button {
+        background-color: #4CAF50; /* Green */
+        color: white;
+        border-radius: 5px;
+        border: none;
+        font-size: 16px;
+        padding: 8px 12px;
+    }
+    .stButton>button:hover {
+        background-color: #2196F3; /* Blue */
+    }
+    .stMetric-label {
+        color: #4CAF50; /* Matches button */
+        font-size: 16px;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
 
 # App Layout
 st.title("AI Assistant for Water Conservation")
 st.write("Get personalized insights, tips, and analytics to conserve water in your household.")
 
 # Tabs for navigation
-tabs = st.tabs(["Real-Time Feedback", "Recommendations", "Savings Calculator", "Regional Insights"])
+tabs = st.tabs(["Real-Time Feedback", "Recommendations", "Savings Calculator"])
 
 # Tab 1: Real-Time Feedback
 with tabs[0]:
@@ -93,11 +147,11 @@ with tabs[0]:
     
     def get_csv_insights(fixture):
         fixture_mapping = {
-            "Shower": "Daily_Usage_Per_Person_Gallons",
+            "Shower": "Shower_Usage_Per_Person_Gallons",
             "Garden": "Total_Daily_Usage_Gallons",  # Placeholder
-            "Car Wash": "Total_Daily_Usage_Gallons",  # Adjust for new columns
-            "Laundry": "Total_Daily_Usage_Gallons",
-            "Dishwashing": "Total_Daily_Usage_Gallons"
+            "Car Wash": "Car_Wash_Usage_Daily_Avg_Gallons",  # Updated for daily average
+            "Laundry": "Laundry_Usage_Gallons",
+            "Dishwashing": "Dishwashing_Usage_Gallons"
         }
         column = fixture_mapping.get(fixture)
         avg_usage = data[column].mean()
@@ -110,34 +164,32 @@ with tabs[0]:
 # Tab 2: Recommendations
 with tabs[1]:
     st.header("Recommendations")
+    st.write("Here are some specific tips to help you save water:")
+
     activity = st.selectbox("Select an activity to get tips:", 
                             ["Shower", "Garden", "Car Wash", "Laundry", "Dishwashing"])
     
     if st.button("Show Recommendations"):
+        avg_usage = get_csv_insights(activity)
         tips = random.sample(recommendations[activity], k=min(2, len(recommendations[activity])))
+        openai_tip = get_openai_tip(activity, avg_usage)
+        
         for tip in tips:
             st.write(f"- {tip}")
+        st.write(f"- {openai_tip}")
 
 # Tab 3: Savings Calculator
 with tabs[2]:
     st.header("Savings Calculator")
-    user_usage = st.number_input("Enter your average daily water usage (gallons):", min_value=0, value=100)
+    st.write("Estimate your savings by implementing specific water-saving measures.")
 
-    target_usage = 82  # National average
-    savings = max(0, user_usage - target_usage)
-    st.write(f"If you reduce your usage to the national average ({target_usage} gallons/day), you could save {savings} gallons per day.")
-    st.write(f"Potential cost savings: ${savings * 0.01065:.2f} per day.")
+    options = {
+        "Install low-flow showerheads (save ~10 gallons/day)": 10,
+        "Upgrade to a high-efficiency washer (save ~15 gallons/load)": 15,
+        "Use drip irrigation for gardens (save ~20 gallons/day)": 20
+    }
+    selected_options = st.multiselect("Select measures you plan to implement:", list(options.keys()))
+    total_savings = sum(options[option] for option in selected_options)
 
-# Tab 4: Regional Insights
-with tabs[3]:
-    st.header("Regional Insights")
-    st.bar_chart(average_usage_df.set_index("Region"))
-
-    st.write("""
-    Californians use significantly more water daily than the national average. 
-    Let's work together to lower this number!
-    """)
-
-    california_population = 39538223
-    potential_savings_statewide = (146 - 82) * california_population
-    st.write(f"If all Californians reduced their water usage to the national average, they could save approximately **{potential_savings_statewide:,} gallons of water per day**!")
+    st.write(f"### Total Estimated Savings: {total_savings} gallons/day")
+    st.write(f"### Potential Cost Savings: ${total_savings * 0.01065:.2f} per day")
