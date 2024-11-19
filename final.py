@@ -133,9 +133,18 @@ with tabs[2]:
     user_usage = st.number_input("Enter your average daily water usage (gallons):", min_value=0, value=100)
 
     target_usage = 82  # National average
-    savings = max(0, user_usage - target_usage)
-    st.write(f"If you reduce your usage to the national average ({target_usage} gallons/day), you could save {savings} gallons per day.")
-    st.write(f"Potential cost savings: ${savings * 0.01065:.2f} per day.")
+    if user_usage > target_usage:
+        savings = user_usage - target_usage
+        cost_savings = savings * 0.01065
+        st.write(f"If you reduce your usage to the national average ({target_usage} gallons/day), you could save **{savings} gallons per day**.")
+        st.write(f"Potential cost savings: **${cost_savings:.2f} per day**.")
+    elif user_usage == target_usage:
+        st.write("Great job! You're already using water at the national average level. Keep it up!")
+    else:
+        savings_below_avg = target_usage - user_usage
+        st.write("Excellent! You're already using less water than the national average. Keep conserving!")
+        st.write(f"You’re saving approximately **{savings_below_avg} gallons per day** compared to the average household.")
+        st.write("Consider sharing your conservation tips with others or finding new ways to optimize even further!")
 
 # Tab 4: Regional Insights
 with tabs[3]:
