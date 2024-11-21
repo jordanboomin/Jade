@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+import random
 import openai
 import os
 import altair as alt
@@ -48,12 +49,67 @@ def generate_synthetic_data():
 
 data = generate_synthetic_data()
 
+# Recommendations (Static)
+recommendations = {
+    "Shower": [
+        "Install WaterSense-certified showerheads to reduce water usage without compromising performance.",
+        "Keep showers under 5 minutes to save water.",
+        "Turn off the water while lathering or shampooing.",
+    ],
+    "Laundry": [
+        "Wash only full loads of laundry to maximize water efficiency.",
+        "Upgrade to a high-efficiency washing machine to reduce water and energy usage.",
+        "Use the shortest cycle possible for lightly soiled clothes.",
+    ],
+    "Dishwashing": [
+        "Run the dishwasher only when it’s fully loaded.",
+        "Use a dishwasher instead of handwashing for better water efficiency.",
+        "Scrape food off plates instead of rinsing them under running water before loading into the dishwasher.",
+    ],
+    "Garden": [
+        "Water plants early in the morning or late in the evening to minimize evaporation.",
+        "Install a drip irrigation system for targeted watering.",
+        "Use mulch around plants to retain soil moisture.",
+    ],
+    "Car Wash": [
+        "Wash your car using a bucket instead of a hose to save water—this can reduce water usage by up to 50%.",
+        "Consider using a commercial car wash that recycles water—many use less than 50 gallons per wash.",
+        "Limit car washes to once or twice per month to conserve water."
+    ]
+}
+
 # Real average water usage
 average_data = {
     "Region": ["Silicon Valley", "California", "National Average"],
     "Daily Usage (Gallons)": [75, 146, 82]
 }
 average_usage_df = pd.DataFrame(average_data)
+
+# Define function for CSV insights
+def get_csv_insights(fixture):
+    fixture_mapping = {
+        "Shower": "Shower_Usage_Gallons",
+        "Garden": "Garden_Usage_Gallons",
+        "Car Wash": "Car_Wash_Usage_Gallons",
+        "Laundry": "Laundry_Usage_Gallons",
+        "Dishwashing": "Dishwashing_Usage_Gallons",
+    }
+    column = fixture_mapping.get(fixture)
+    avg_usage = data[column].mean()
+    return avg_usage
+
+# Define OpenAI Tip Generator
+def get_openai_tip(activity, avg_usage):
+    prompt = f"Provide a water-saving tip for {activity} based on an average daily water usage of {avg_usage:.2f} gallons."
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=100
+        )
+        return response.choices[0].message['content'].strip()
+    except Exception as e:
+        return f"Error fetching OpenAI tip: {e}"
 
 # App Layout
 st.title("JadeAI Water Conservation")
@@ -70,18 +126,6 @@ with tabs[0]:
     fixture = st.selectbox("Select a fixture to find the average water usage:", 
                            ["Shower", "Garden", "Car Wash", "Laundry", "Dishwashing"])
     
-    def get_csv_insights(fixture):
-        fixture_mapping = {
-            "Shower": "Shower_Usage_Gallons",
-            "Garden": "Garden_Usage_Gallons",
-            "Car Wash": "Car_Wash_Usage_Gallons",
-            "Laundry": "Laundry_Usage_Gallons",
-            "Dishwashing": "Dishwashing_Usage_Gallons",
-        }
-        column = fixture_mapping.get(fixture)
-        avg_usage = data[column].mean()
-        return avg_usage
-
     if st.button("Get Data"):
         avg_usage = get_csv_insights(fixture)
         st.metric(label=f"Average Daily {fixture} Usage", value=f"{avg_usage:.2f} gallons")
@@ -89,38 +133,19 @@ with tabs[0]:
 # Tab 2: Recommendations
 with tabs[1]:
     st.header("Recommendations")
+    st.write("Here are some specific tips to help you save water:")
+
+    activity = st.selectbox("Select an activity to get tips:", 
+                            ["Shower", "Garden", "Car Wash", "Laundry", "Dishwashing"])
     
-    # Dropdown menu for appliance selection
-    appliance = st.selectbox("Select an appliance to get water conservation tips:", 
-                              ["Shower", "Garden", "Car Wash", "Laundry", "Dishwashing"])
-    
-    # Generate AI-powered recommendations when the button is clicked
-    if st.button("Generate Recommendations"):
-        # Prepare the prompt for ChatGPT
-        prompt = f"""
-        You are an assistant providing water conservation tips. The user has selected the {appliance} as their area of interest. 
-        Provide three actionable, practical, and effective tips for reducing water usage related to the {appliance}.
-        """
+    if st.button("Show Recommendations"):
+        avg_usage = get_csv_insights(activity)
+        tips = random.sample(recommendations[activity], k=min(2, len(recommendations[activity])))
+        openai_tip = get_openai_tip(activity, avg_usage)
         
-        try:
-            # OpenAI ChatCompletion call
-            response = openai.ChatCompletion.create(
-                model="gpt-4",  # Use "gpt-3.5-turbo" if needed
-                messages=[
-                    {"role": "system", "content": "You are an assistant that provides water conservation tips."},
-                    {"role": "user", "content": prompt}
-                ],
-                max_tokens=200,
-                temperature=0.7
-            )
-            
-            # Extract and display the AI's response
-            st.subheader("AI-Generated Tips:")
-            tips = response['choices'][0]['message']['content'].strip()
-            st.write(tips)
-        
-        except Exception as e:
-            st.error(f"Error generating recommendations: {e}")
+        for tip in tips:
+            st.write(f"- {tip}")
+        st.write(f"- {openai_tip}")
 
 # Tab 3: Savings Calculator
 with tabs[2]:
