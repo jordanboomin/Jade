@@ -86,7 +86,7 @@ average_data = {
 average_usage_df = pd.DataFrame(average_data)
 
 # App Layout
-st.title("AI Assistant for Water Conservation")
+st.title("JadeAI Water Conservation")
 st.write("Get personalized insights, tips, and analytics to conserve water in your household.")
 
 # Tabs for navigation
