@@ -100,15 +100,25 @@ def get_csv_insights(fixture):
 
 # Define OpenAI Tip Generator
 def get_openai_tip(activity, avg_usage):
+    # Define the prompt for OpenAI
     prompt = f"Provide a water-saving tip for {activity} based on an average daily water usage of {avg_usage:.2f} gallons."
+    
     try:
+        # Use the correct API method
         response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=100
+            model="gpt-4",  # You can also use "gpt-3.5-turbo" if preferred
+            messages=[
+                {"role": "system", "content": "You are an assistant that provides water conservation advice."},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=100,
+            temperature=0.7
         )
-        return response.choices[0].message['content'].strip()
+        # Extract and return the generated response
+        return response['choices'][0]['message']['content'].strip()
+    
     except Exception as e:
+        # Handle exceptions gracefully
         return f"Error fetching OpenAI tip: {e}"
 
 # App Layout
